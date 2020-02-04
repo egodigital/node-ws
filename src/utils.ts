@@ -1,5 +1,39 @@
 import { Nilable, WebSocketData } from './contracts';
 
+
+/**
+ * Checks if two buffers or theirs contents are equal.
+ *
+ * @param {Nilable<Buffer>} x The first buffer.
+ * @param {Nilable<Buffer>} y The sencond buffer.
+ * 
+ * @return {boolean} Are equal or not.
+ */
+export function areBuffersEqual(x: Nilable<Buffer>, y: Nilable<Buffer>): boolean {
+    if (x === y) {
+        return true;
+    }
+
+    if (x && y) {
+        const LEN_X = x.length;
+
+        if (LEN_X !== y.length) {
+            return false;  // unique sizes
+        }
+
+        for (let i = 0; i < LEN_X; i++) {
+            if (x.readUInt8(i) !== y.readUInt8(i)) {
+                return false;  // different data
+            }
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+
 /**
  * Returns web socket data as buffer.
  *

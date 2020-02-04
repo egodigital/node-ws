@@ -18,7 +18,7 @@
 import * as WebSocket from 'ws';
 import { EventEmitter } from 'events';
 import { Disposable, Nilable, Predicate, WebSocketMessage, WebSocketServerKey } from '../contracts';
-import { asBuffer, isValidSocketData } from '../utils';
+import { areBuffersEqual, asBuffer, isValidSocketData } from '../utils';
 import { SimpleWebSocketClient } from '../client/SimpleWebSocketClient';
 
 interface OnMessageHandlerItem {
@@ -166,6 +166,7 @@ export class SimpleWebSocketServer extends EventEmitter {
                             return;
                         }
 
+                        // handlers
                         for (const H of (this._onMessageHandlers as OnMessageHandlerItem[])) {
                             try {
                                 if (!H.filter(MSG)) {
@@ -207,7 +208,7 @@ export class SimpleWebSocketServer extends EventEmitter {
                     } else {
                         // needs to be authorized
 
-                        if ('string' !== typeof data) {
+                        if (!isValidSocketData(data)) {
                             CLOSE();
                             return;
                         }
@@ -215,7 +216,7 @@ export class SimpleWebSocketServer extends EventEmitter {
                         if (null !== this.key) {
                             // check for key
 
-                            if (!Buffer.compare(asBuffer(data) as Buffer, this.key)) {
+                            if (!areBuffersEqual(asBuffer(data) as Buffer, this.key)) {
                                 CLOSE();  // key does not match
                                 return;
                             }
