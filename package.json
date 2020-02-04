@@ -1,12 +1,13 @@
 {
   "name": "@egodigital/ws",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Simple socket server and client classes.",
   "main": "lib/index.js",
   "scripts": {
     "build": "(rm -r ./lib || true) && tsc && tsc -d",
     "deploy": "npm install && npm run build && npm publish",
     "doc": "(rm -r ./doc || true) && (typedoc --out ./doc ./src)",
+    "sandbox": "npm run build && node ./lib/sandbox",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -29,6 +30,7 @@
   "homepage": "https://github.com/egodigital/node-ws#readme",
   "devDependencies": {
     "@egodigital/tsconfig": "^2.0.0",
+    "express": "^4.17.1",
     "tslint": "^6.0.0",
     "typedoc": "^0.16.9",
     "typescript": "^3.7.5"

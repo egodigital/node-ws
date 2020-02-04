@@ -18,7 +18,7 @@
 import { createServer as createHttpServer } from 'http';
 import { Server as WebSocketServer, ServerOptions as WebSocketServerOptions } from 'ws';
 import { Express } from 'express';
-import { HttpServer, HttpServerFactory, Nilable, WebSocketServerFactory } from './contracts';
+import { HttpServer, HttpServerFactory, Nilable, WebSocketServerFactory, WebSocketServerKey } from './contracts';
 import { SimpleWebSocketServer } from './server/SimpleWebSocketServer';
 
 /**
@@ -29,6 +29,14 @@ export interface WithExpressOptions<TApp extends Express = Express> {
      * The underlying app.
      */
     app: TApp;
+    /**
+     * Auto initialize web socket server or not.
+     */
+    autoInit?: Nilable<boolean>;
+    /**
+     * The server key for authorization.
+     */
+    key?: Nilable<WebSocketServerKey>;
     /**
      * HTTP (server) options.
      */
@@ -66,6 +74,12 @@ export interface WithExpressResult<TApp extends Express = Express> {
      */
     http: HttpServer;
     /**
+     * Starts listening on a port.
+     * 
+     * @param {number} port The custom port. Default: 80
+     */
+    listen: (port?: number) => Promise<void>;
+    /**
      * The (simple) web socket server instance.
      */
     server: SimpleWebSocketServer;
@@ -79,6 +93,9 @@ export interface WithExpressResult<TApp extends Express = Express> {
  * @return {WithExpressResult<TApp>} The result of that function.
  */
 export function withExpress<TApp extends Express = Express>(opts: WithExpressOptions<TApp>): WithExpressResult<TApp> {
+    let httpServer: HttpServer;
+    let wsServer: WebSocketServer;
+
     let httpServerFactory = opts.http?.factory;
     if (!httpServerFactory) {
         httpServerFactory = () => createHttpServer();
@@ -86,18 +103,39 @@ export function withExpress<TApp extends Express = Express>(opts: WithExpressOpt
 
     let webSocketServerFactory = opts.webSocket?.factory;
     if (!webSocketServerFactory) {
-        webSocketServerFactory = (opts) => new WebSocketServer(opts);
+        webSocketServerFactory = (opts) => new WebSocketServer(Object.assign({
+            server: httpServer,
+        }, opts || {}));
     }
 
-    const WS_SERVER = webSocketServerFactory(opts.webSocket?.options);
+    httpServer = httpServerFactory();
+    httpServer.on('request', opts.app);
 
-    const HTTP_SERVER = httpServerFactory();
-    HTTP_SERVER.on('request', opts.app);
+    wsServer = webSocketServerFactory(opts.webSocket?.options);
 
     return {
         app: opts.app,
-        http: HTTP_SERVER,
-        server: new SimpleWebSocketServer(WS_SERVER),
+        http: httpServer,
+        listen: function (port?: number) {
+            if (arguments.length < 1) {
+                port = 80;
+            }
+
+            return new Promise<void>((resolve, reject) => {
+                try {
+                    httpServer.listen(port, () => {
+                        resolve();
+                    });
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        },
+        server: new SimpleWebSocketServer({
+            autoInit: opts.autoInit,
+            key: opts.key,
+            server: wsServer,
+        }),
     };
 }
 

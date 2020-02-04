@@ -15,9 +15,23 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-import * as WebSocketClient from 'ws';
+import * as WebSocket from 'ws';
 import { EventEmitter } from 'events';
-import { Nilable } from '../contracts';
+import { Nilable, Url, WebSocketMessage } from '../contracts';
+
+/**
+ * Options for SimpleWebSocketClient class.
+ */
+export interface SimpleWebSocketClientOptions {
+    /**
+     * Directly call 'init()' method or not. Default (false)
+     */
+    autoInit?: Nilable<boolean>;
+    /**
+     * The underlying client instance.
+     */
+    client: WebSocket;
+}
 
 /**
  * A simple web socket client instance.
@@ -26,20 +40,91 @@ export class SimpleWebSocketClient extends EventEmitter {
     /**
      * Initializes a new instance of that class.
      * 
-     * @param {WebSocketClient} client The underlying basic web socket client instance.
-     * @param {boolean} [autoInit] Directly call 'init()' method or not. Default: (false)
+     * @param {SimpleWebSocketClientOptions} options The options.
      */
-    public constructor(public readonly client: WebSocketClient, autoInit?: Nilable<boolean>) {
+    public constructor(public readonly options: SimpleWebSocketClientOptions) {
         super();
 
-        if (autoInit) {
+        if (options.autoInit) {
             this.init();
         }
+    }
+
+    /**
+     * Closes the connection.
+     */
+    public close() {
+        return new Promise((resolve, reject) => {
+            try {
+                this.options.client.close();
+
+                resolve();
+            } catch (e) {
+                reject(e);
+            }
+        });
+    }
+
+    /**
+     * Starts the connection.
+     */
+    public connect() {
+        return new Promise<void>((resolve, reject) => {
+            try {
+                this.options.client.once('error', (err) => {
+                    reject(err);
+                });
+
+                this.options.client.once('open', () => {
+                    resolve();
+                });
+            } catch (e) {
+                reject(e);
+            }
+        });
+    }
+
+    /**
+     * Creates a new instance from an URL.
+     * 
+     * @param {Url} url The URL.
+     */
+    public static fromUrl(url: Url): SimpleWebSocketClient {
+        return new SimpleWebSocketClient({
+            client: new WebSocket(url),
+        });
     }
 
     /**
      * Initializes that instance.
      */
     public init() {
+    }
+
+    /**
+     * Sends data to the client.
+     *
+     * @param {string} type The type of the data.
+     * @param {Nilable} [data] The optional data to send. 
+     */
+    public send<TData extends any = any>(type: string, data?: Nilable): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            try {
+                const MSG: WebSocketMessage<TData> = {
+                    type: String(type),
+                    data,
+                };
+
+                this.options.client.send(JSON.stringify(MSG), (err) => {
+                    if (err) {
+                        resolve();
+                    } else {
+                        reject(err);
+                    }
+                });
+            } catch (e) {
+                reject(e);
+            }
+        });
     }
 }

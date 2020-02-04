@@ -17,7 +17,18 @@
 
 import { Server as PlainHttpServer } from 'http';
 import { Server as SecureHttpServer } from 'https';
+import { URL } from 'url';
 import { Server as WebSocketServer, ServerOptions as WebSocketServerOptions } from 'ws';
+
+/**
+ * An object, that can free resources.
+ */
+export interface Disposable {
+    /**
+     * Disposes the object.
+     */
+    dispose(): void;
+}
 
 /**
  * A HTTP(s) server innstance.
@@ -32,9 +43,42 @@ export type HttpServer = PlainHttpServer | SecureHttpServer;
 export type HttpServerFactory = () => HttpServer;
 
 /**
+ * A function that checks something.
+ * 
+ * @param {T} val The value to check.
+ * 
+ * @return {boolean} Value matches condition or not.
+ */
+export type Predicate<T extends any = any> = (val: T) => boolean;
+
+/**
  * A type, that can be (null) or (undefined).
  */
 export type Nilable<T extends any = any> = T | null | undefined;
+
+/**
+ * Possible value for an URL.
+ */
+export type Url = string | URL;
+
+/**
+ * Valid web socket data.
+ */
+export type WebSocketData = string | Buffer;
+
+/**
+ * A web socket message.
+ */
+export interface WebSocketMessage<TData extends any = any> {
+    /**
+     * The data.
+     */
+    data?: Nilable<TData>;
+    /**
+     * The type.
+     */
+    type: string;
+}
 
 /**
  * A function, that creates or returns a web socket server instance.
@@ -42,3 +86,8 @@ export type Nilable<T extends any = any> = T | null | undefined;
  * @return {WebSocketServer} The new instance.
  */
 export type WebSocketServerFactory = (opts?: WebSocketServerOptions | undefined) => WebSocketServer;
+
+/**
+ * A valid value for a web socket server key.
+ */
+export type WebSocketServerKey = string | Buffer;
