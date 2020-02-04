@@ -1,0 +1,42 @@
+{
+  "name": "@egodigital/ws",
+  "version": "0.0.1",
+  "description": "Simple socket server and client classes.",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "(rm -r ./lib || true) && tsc && tsc -d",
+    "deploy": "npm install && npm run build && npm publish",
+    "doc": "(rm -r ./doc || true) && (typedoc --out ./doc ./src)",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/egodigital/node-ws.git"
+  },
+  "keywords": [
+    "websocket",
+    "ws",
+    "socket",
+    "client",
+    "server",
+    "typescript"
+  ],
+  "author": "e.GO Digital GmbH, Aachen, Germany",
+  "license": "LGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/egodigital/node-ws/issues"
+  },
+  "homepage": "https://github.com/egodigital/node-ws#readme",
+  "devDependencies": {
+    "@egodigital/tsconfig": "^2.0.0",
+    "tslint": "^6.0.0",
+    "typedoc": "^0.16.9",
+    "typescript": "^3.7.5"
+  },
+  "dependencies": {
+    "@types/express": "4.17.1",
+    "@types/node": "^10.17.13",
+    "@types/ws": "^7.2.1",
+    "ws": "^7.2.1"
+  }
+}
