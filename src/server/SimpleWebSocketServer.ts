@@ -15,9 +15,31 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+import { Server as WebSocketServer } from 'ws';
+import { EventEmitter } from 'events';
+import { Nilable } from '../contracts';
+
 /**
  * A simple web socket server instance.
  */
-export class SimpleWebSocketServer {
-    // TODO: implement
+export class SimpleWebSocketServer extends EventEmitter {
+    /**
+     * Initializes a new instance of that class.
+     * 
+     * @param {WebSocketServer} server The underlying basic web socket server instance.
+     * @param {boolean} [autoInit] Directly call 'init()' method or not. Default: (false)
+     */
+    public constructor(public readonly server: WebSocketServer, autoInit?: Nilable<boolean>) {
+        super();
+
+        if (autoInit) {
+            this.init();
+        }
+    }
+
+    /**
+     * Initializes that instance.
+     */
+    public init() {
+    }
 }
