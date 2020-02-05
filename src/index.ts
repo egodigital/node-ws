@@ -30,11 +30,11 @@ export interface WithExpressOptions<TApp extends Express = Express> {
      */
     app: TApp;
     /**
-     * Auto initialize web socket server or not.
+     * Auto initialize web socket server or not. Default: (true)
      */
     autoInit?: Nilable<boolean>;
     /**
-     * The server key for authorization.
+     * The server key for authentication.
      */
     key?: Nilable<WebSocketServerKey>;
     /**
@@ -139,5 +139,5 @@ export function withExpress<TApp extends Express = Express>(opts: WithExpressOpt
     };
 }
 
-export * from './client/SimpleWebSocketClient';
+export * from './client/SimpleWebSocket';
 export * from './server/SimpleWebSocketServer';

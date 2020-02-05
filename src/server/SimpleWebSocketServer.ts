@@ -18,8 +18,8 @@
 import * as WebSocket from 'ws';
 import { EventEmitter } from 'events';
 import { Disposable, Nilable, Predicate, WebSocketMessage, WebSocketServerKey } from '../contracts';
-import { areBuffersEqual, asBuffer, isValidSocketData } from '../utils';
-import { SimpleWebSocketClient } from '../client/SimpleWebSocketClient';
+import { areBuffersEqual, asBuffer, isNil, isValidSocketData } from '../utils';
+import { SimpleWebSocket } from '../client/SimpleWebSocket';
 
 interface OnMessageHandlerItem {
     filter: Predicate<WebSocketMessage>;
@@ -33,7 +33,7 @@ export interface SimpleWebSocketServerMessageHandlerContext<TData extends any = 
     /**
      * The underlying client.
      */
-    client: SimpleWebSocketClient;
+    client: SimpleWebSocket;
     /**
      * The message.
      */
@@ -53,7 +53,7 @@ export type SimpleWebSocketServerMessageHandler<TData extends any = any>
  */
 export interface SimpleWebSocketServerOptions {
     /**
-     * Directly call 'init()' method or not. Default (false)
+     * Directly call 'init()' method or not. Default (true)
      */
     autoInit?: Nilable<boolean>;
     /**
@@ -70,7 +70,7 @@ export interface SimpleWebSocketServerOptions {
  * A simple web socket server instance.
  */
 export class SimpleWebSocketServer extends EventEmitter {
-    private _clients: SimpleWebSocketClient[] | undefined;
+    private _clients: SimpleWebSocket[] | undefined;
     private _onMessageHandlers: OnMessageHandlerItem[] | undefined;
 
     /**
@@ -81,7 +81,7 @@ export class SimpleWebSocketServer extends EventEmitter {
     public constructor(public readonly options: SimpleWebSocketServerOptions) {
         super();
 
-        if (options.autoInit) {
+        if (isNil(options.autoInit) || options.autoInit) {
             this.init();
         }
     }
@@ -113,38 +113,28 @@ export class SimpleWebSocketServer extends EventEmitter {
         this._onMessageHandlers = [];
 
         this.server.on('connection', (socket: WebSocket) => {
-            let simpleClient: Nilable<SimpleWebSocketClient>;
+            let simpleClient: Nilable<SimpleWebSocket>;
 
             const REMOVE_FROM_LIST = () => {
                 this._clients =
-                    this._clients?.filter(c => c?.options.client !== socket);
+                    this._clients?.filter(c => c?.options.socket !== socket);
             };
 
             const CLOSE = () => {
                 REMOVE_FROM_LIST();
 
-                socket.close();
-            };
-
-            const SEND_ERROR = async (err: any) => {
-                let errData: any = err;
-                if (errData instanceof Error) {
-                    errData = {
-                        name: errData.name,
-                        message: errData.stack,
-                        stack: errData.stack,
-                    };
-                }
-
-                await (simpleClient as SimpleWebSocketClient).send('error', errData);
-            };
-
-            const SEND_OK = async (result?: Nilable) => {
-                await (simpleClient as SimpleWebSocketClient).send('ok', result);
+                try {
+                    socket.close();
+                } catch { }
             };
 
             socket.once('close', () => {
                 REMOVE_FROM_LIST();
+
+                this.emit(
+                    'close',
+                    simpleClient, this,
+                );
             });
 
             socket.on('message', (data: WebSocket.Data) => {
@@ -174,7 +164,7 @@ export class SimpleWebSocketServer extends EventEmitter {
                                 }
 
                                 const CTX: SimpleWebSocketServerMessageHandlerContext = {
-                                    client: simpleClient as SimpleWebSocketClient,
+                                    client: simpleClient as SimpleWebSocket,
                                     message: MSG,
                                 };
 
@@ -183,30 +173,36 @@ export class SimpleWebSocketServer extends EventEmitter {
                                     H.handler(CTX)
                                 ).then(async (result?) => {
                                     try {
-                                        await SEND_OK(result);
+                                        await (simpleClient as SimpleWebSocket).ok(result);
                                     } catch {
                                         CLOSE();
                                     }
                                 }).catch(async (err) => {
                                     try {
-                                        await SEND_ERROR(err);
+                                        await (simpleClient as SimpleWebSocket).error(err);
                                     } catch {
                                         CLOSE();
                                     }
                                 });
                             } catch (e) {
-                                SEND_ERROR(e);
+                                (simpleClient as SimpleWebSocket).error(e)
+                                    .catch(() => CLOSE());
+
                                 return;
                             }
                         }
 
                         // via event
-                        (simpleClient as SimpleWebSocketClient).emit(
+                        (simpleClient as SimpleWebSocket).emit(
                             'message',
                             MSG, simpleClient, this,
                         );
                     } else {
                         // needs to be authorized
+
+                        const NEW_CLIENT = new SimpleWebSocket({
+                            socket: socket,
+                        });
 
                         if (!isValidSocketData(data)) {
                             CLOSE();
@@ -217,21 +213,24 @@ export class SimpleWebSocketServer extends EventEmitter {
                             // check for key
 
                             if (!areBuffersEqual(asBuffer(data) as Buffer, this.key)) {
-                                CLOSE();  // key does not match
+                                // key from remote does not match
+                                NEW_CLIENT.send('auth_failed')
+                                    .catch(() => { })
+                                    .finally(() => CLOSE());
+
                                 return;
                             }
                         }
 
-                        simpleClient = new SimpleWebSocketClient({
-                            autoInit: true,
-                            client: socket,
-                        });
+                        simpleClient = NEW_CLIENT;
 
-                        (this._clients as SimpleWebSocketClient[])
+                        (this._clients as SimpleWebSocket[])
                             .push(simpleClient);
 
-                        // tell, we have a new connection here
-                        this.emit('connection', simpleClient, this);
+                        // tell, all is fine and we have a new connection here
+                        simpleClient.ok()
+                            .then(() => this.emit('connection', simpleClient, this))
+                            .catch(() => CLOSE());
                     }
                 } catch (e) {
                     CLOSE();

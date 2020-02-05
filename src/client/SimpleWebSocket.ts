@@ -18,64 +18,64 @@
 import * as WebSocket from 'ws';
 import { EventEmitter } from 'events';
 import { Disposable, Nilable, Predicate, Url, WebSocketMessage, WebSocketServerKey } from '../contracts';
-import { asBuffer, isValidSocketData } from '../utils';
+import { asBuffer, isNil, isValidSocketData } from '../utils';
 
 interface OnMessageHandlerItem {
     filter: Predicate<WebSocketMessage>;
-    handler: SimpleWebSocketClientMessageHandler;
+    handler: SimpleWebSocketMessageHandler;
 }
 
 /**
  * A 'onMessage' handler context.
  */
-export interface SimpleWebSocketClientMessageHandlerContext<TData extends any = any> {
-    /**
-     * The underlying client.
-     */
-    client: SimpleWebSocketClient;
+export interface SimpleWebSocketMessageHandlerContext<TData extends any = any> {
     /**
      * The message.
      */
     message: WebSocketMessage<TData>;
+    /**
+     * The underlying socket.
+     */
+    socket: SimpleWebSocket;
 }
 
 /**
  * A handler for 'onMessage' method.
  * 
- * @param {SimpleWebSocketClientMessageHandlerContext<TData>} context The context.
+ * @param {SimpleWebSocketMessageHandlerContext<TData>} context The context.
  */
-export type SimpleWebSocketClientMessageHandler<TData extends any = any>
-    = (context: SimpleWebSocketClientMessageHandlerContext<TData>) => any;
+export type SimpleWebSocketMessageHandler<TData extends any = any>
+    = (context: SimpleWebSocketMessageHandlerContext<TData>) => any;
 
 /**
- * Options for SimpleWebSocketClient class.
+ * Options for SimpleWebSocket class.
  */
-export interface SimpleWebSocketClientOptions {
+export interface SimpleWebSocketOptions {
     /**
-     * Directly call 'init()' method or not. Default (false)
+     * Directly call 'init()' method or not. Default (true)
      */
     autoInit?: Nilable<boolean>;
     /**
-     * The underlying client instance.
+     * The underlying basic socket instance.
      */
-    client: WebSocket;
+    socket: WebSocket;
 }
 
 /**
- * A simple web socket client instance.
+ * A simple web socket instance.
  */
-export class SimpleWebSocketClient extends EventEmitter {
+export class SimpleWebSocket extends EventEmitter {
     private _onMessageHandlers: OnMessageHandlerItem[] | undefined;
 
     /**
      * Initializes a new instance of that class.
      * 
-     * @param {SimpleWebSocketClientOptions} options The options.
+     * @param {SimpleWebSocketOptions} options The options.
      */
-    public constructor(public readonly options: SimpleWebSocketClientOptions) {
+    public constructor(public readonly options: SimpleWebSocketOptions) {
         super();
 
-        if (options.autoInit) {
+        if (isNil(options.autoInit) || options.autoInit) {
             this.init();
         }
     }
@@ -86,7 +86,7 @@ export class SimpleWebSocketClient extends EventEmitter {
     public close() {
         return new Promise((resolve, reject) => {
             try {
-                this.options.client.close();
+                this.options.socket.close();
 
                 resolve();
             } catch (e) {
@@ -101,13 +101,13 @@ export class SimpleWebSocketClient extends EventEmitter {
     public connect(key?: Nilable<WebSocketServerKey>) {
         return new Promise<void>((resolve, reject) => {
             try {
-                this.options.client.once('error', (err) => {
+                this.options.socket.once('error', (err) => {
                     reject(err);
                 });
 
-                this.options.client.once('open', () => {
+                this.options.socket.once('open', () => {
                     try {
-                        this.options.client.send(key, (err) => {
+                        this.options.socket.send(key, (err) => {
                             if (err) {
                                 reject(err);
                             } else {
@@ -125,13 +125,50 @@ export class SimpleWebSocketClient extends EventEmitter {
     }
 
     /**
+     * Creates and opens a new connection to a remote web socket host.
+     *
+     * @param {Url} url 
+     * @param {Nilable<WebSocketServerKey>} [key] The optional key for the authentification.
+     * 
+     * @return {Promise<SimpleWebSocket>} The promise with the successful connected socket.
+     */
+    public static async connectTo(url: Url, key?: Nilable<WebSocketServerKey>): Promise<SimpleWebSocket> {
+        const NEW_SOCKET = new SimpleWebSocket({
+            socket: new WebSocket(url),
+        });
+        await NEW_SOCKET.connect(key);
+
+        return NEW_SOCKET;
+    }
+
+    /**
+     * Sends an error message.
+     *
+     * @param {any} err The error information. 
+     */
+    public error(err: any) {
+        let errData: any = err;
+        if (errData instanceof Error) {
+            errData = {
+                name: errData.name,
+                message: errData.stack,
+                stack: errData.stack,
+            };
+        } else {
+            errData = String(errData);
+        }
+
+        return this.send('error', errData);
+    }
+
+    /**
      * Creates a new instance from an URL.
      * 
      * @param {Url} url The URL.
      */
-    public static fromUrl(url: Url): SimpleWebSocketClient {
-        return new SimpleWebSocketClient({
-            client: new WebSocket(url),
+    public static fromUrl(url: Url): SimpleWebSocket {
+        return new SimpleWebSocket({
+            socket: new WebSocket(url),
         });
     }
 
@@ -141,28 +178,17 @@ export class SimpleWebSocketClient extends EventEmitter {
     public init() {
         this._onMessageHandlers = [];
 
+        this.options.socket.once('close', () => {
+            this.emit('close', this);
+        });
+
         const CLOSE = () => {
-            this.close();
+            try {
+                this.close();
+            } catch { }
         };
 
-        const SEND_ERROR = async (err: any) => {
-            let errData: any = err;
-            if (errData instanceof Error) {
-                errData = {
-                    name: errData.name,
-                    message: errData.stack,
-                    stack: errData.stack,
-                };
-            }
-
-            await this.send('error', errData);
-        };
-
-        const SEND_OK = async (result?: Nilable) => {
-            await this.send('ok', result);
-        };
-
-        this.options.client.on('message', (data: WebSocket.Data) => {
+        this.options.socket.on('message', (data: WebSocket.Data) => {
             try {
                 if (!isValidSocketData(data)) {
                     CLOSE();
@@ -187,9 +213,9 @@ export class SimpleWebSocketClient extends EventEmitter {
                             continue;
                         }
 
-                        const CTX: SimpleWebSocketClientMessageHandlerContext = {
-                            client: this,
+                        const CTX: SimpleWebSocketMessageHandlerContext = {
                             message: MSG,
+                            socket: this,
                         };
 
                         // via handler
@@ -197,19 +223,21 @@ export class SimpleWebSocketClient extends EventEmitter {
                             H.handler(CTX)
                         ).then(async (result?) => {
                             try {
-                                await SEND_OK(result);
+                                await this.ok(result);
                             } catch {
                                 CLOSE();
                             }
                         }).catch(async (err) => {
                             try {
-                                await SEND_ERROR(err);
+                                await this.error(err);
                             } catch {
                                 CLOSE();
                             }
                         });
                     } catch (e) {
-                        SEND_ERROR(e);
+                        this.error(e)
+                            .catch(() => CLOSE());
+
                         return;
                     }
                 }
@@ -225,6 +253,15 @@ export class SimpleWebSocketClient extends EventEmitter {
     }
 
     /**
+     * Sends an OK message.
+     *
+     * @param {Nilable<TData>} [data] The optional data to send. 
+     */
+    public ok<TData extends any = any>(data?: Nilable<TData>) {
+        return this.send('ok', data);
+    }
+
+    /**
      * Registers a message handler.
      *
      * @param {SimpleWebSocketServerMessageHandler<TData>} handler The handler to register.
@@ -233,7 +270,7 @@ export class SimpleWebSocketClient extends EventEmitter {
      * @return {Disposable} A context onbject, which can be used to unregister the handler.
      */
     public onMessage<TData extends any = any>(
-        handler: SimpleWebSocketClientMessageHandler<TData>,
+        handler: SimpleWebSocketMessageHandler<TData>,
         filter?: Nilable<Predicate<WebSocketMessage<TData>>>
     ): Disposable {
         if (!filter) {
@@ -257,12 +294,12 @@ export class SimpleWebSocketClient extends EventEmitter {
     }
 
     /**
-     * Sends data to the client.
+     * Sends data to the remote server.
      *
      * @param {string} type The type of the data.
-     * @param {Nilable} [data] The optional data to send. 
+     * @param {Nilable<TData>} [data] The optional data to send. 
      */
-    public send<TData extends any = any>(type: string, data?: Nilable): Promise<void> {
+    public send<TData extends any = any>(type: string, data?: Nilable<TData>): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             try {
                 const MSG: WebSocketMessage<TData> = {
@@ -270,7 +307,7 @@ export class SimpleWebSocketClient extends EventEmitter {
                     data,
                 };
 
-                this.options.client.send(JSON.stringify(MSG), (err) => {
+                this.options.socket.send(JSON.stringify(MSG), (err) => {
                     if (err) {
                         reject(err);
                     } else {

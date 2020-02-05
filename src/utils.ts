@@ -2,7 +2,7 @@ import { Nilable, WebSocketData } from './contracts';
 
 
 /**
- * Checks if two buffers or theirs contents are equal.
+ * Checks if the contents of two buffers are equal.
  *
  * @param {Nilable<Buffer>} x The first buffer.
  * @param {Nilable<Buffer>} y The sencond buffer.
