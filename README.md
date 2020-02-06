@@ -22,6 +22,8 @@ You are able to share the same port with and [express](http://expressjs.com/) an
 import * as express from 'express';
 import { SimpleWebSocket, withExpress } from '@egodigital/ws';
 
+// ##### SERVER #####
+
 // Express instance
 const app = express();
 
@@ -50,29 +52,30 @@ SERVER.onMessage(async (ctx) => {
 // start listening on port 8080
 await SERVER.listen(8080);
 
-setTimeout(() => {
-    // connect to local server
-    const CLIENT = SimpleWebSocket.fromUrl('ws://localhost:8080');
 
-    // handle messages of any type from server
-    CLIENT.onMessage((ctx) => {
-        console.log('CLIENT.onMessage', ctx.message);
-    });
+// ##### CLIENT #####
 
-    await CLIENT.connect('ego');  // same as submitted to 'withExpress()'
-                                  // s.a.
+// connect to local server
+const CLIENT = SimpleWebSocket.fromUrl('ws://localhost:8080');
 
-    // send message of type 'HelloEGO'
-    // and data 5979 to local server
-    await CLIENT.send('HelloEGO', 5979);
-}, 5000);
+// handle messages of any type from server
+CLIENT.onMessage((ctx) => {
+    console.log('CLIENT.onMessage', ctx.message);
+});
+
+await CLIENT.connect('ego');  // same key as submitted to 'withExpress()'
+                              // s.a.
+
+// send message of type 'HelloEGO'
+// and data 5979 to local server
+await CLIENT.send('HelloEGO', 5979);
 ```
 
 ## Events
 
 ```typescript
 // SimpleWebSocket
-CLIENT.on('message', (msg) => {
+CLIENT.on('message', (msg, client) => {
     // handle message from remote server
 });
 CLIENT.on('close', () => {
