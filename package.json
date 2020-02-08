@@ -1,6 +1,6 @@
 {
   "name": "@egodigital/ws",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Simple socket server and client classes.",
   "main": "lib/index.js",
   "scripts": {
@@ -29,7 +29,7 @@
   },
   "homepage": "https://github.com/egodigital/node-ws#readme",
   "devDependencies": {
-    "@egodigital/tsconfig": "^2.0.0",
+    "@egodigital/tsconfig": "^2.0.1",
     "express": "^4.17.1",
     "tslint": "^6.0.0",
     "typedoc": "^0.16.9",
