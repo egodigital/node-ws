@@ -173,19 +173,19 @@ export class SimpleWebSocketServer extends EventEmitter {
                                     H.handler(CTX)
                                 ).then(async (result?) => {
                                     try {
-                                        await (simpleClient as SimpleWebSocket).ok(result);
+                                        await (simpleClient as SimpleWebSocket).ok(result, MSG.ref);
                                     } catch {
                                         CLOSE();
                                     }
                                 }).catch(async (err) => {
                                     try {
-                                        await (simpleClient as SimpleWebSocket).error(err);
+                                        await (simpleClient as SimpleWebSocket).error(err, MSG.ref);
                                     } catch {
                                         CLOSE();
                                     }
                                 });
                             } catch (e) {
-                                (simpleClient as SimpleWebSocket).error(e)
+                                (simpleClient as SimpleWebSocket).error(e, MSG.ref)
                                     .catch(() => CLOSE());
 
                                 return;

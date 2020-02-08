@@ -69,11 +69,15 @@ export type WebSocketData = string | Buffer;
 /**
  * A web socket message.
  */
-export interface WebSocketMessage<TData extends any = any> {
+export interface WebSocketMessage<TData extends any = any, TRef extends any = any> {
     /**
      * The data.
      */
     data?: Nilable<TData>;
+    /**
+     * Type of the reference data.
+     */
+    ref?: Nilable<TRef>;
     /**
      * The type.
      */

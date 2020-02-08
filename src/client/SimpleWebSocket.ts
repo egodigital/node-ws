@@ -146,7 +146,7 @@ export class SimpleWebSocket extends EventEmitter {
      *
      * @param {any} err The error information. 
      */
-    public error(err: any) {
+    public error<TRef extends any = any>(err: any, ref?: Nilable<TRef>) {
         let errData: any = err;
         if (errData instanceof Error) {
             errData = {
@@ -158,7 +158,7 @@ export class SimpleWebSocket extends EventEmitter {
             errData = String(errData);
         }
 
-        return this.send('error', errData);
+        return this.send('error', errData, ref);
     }
 
     /**
@@ -223,19 +223,19 @@ export class SimpleWebSocket extends EventEmitter {
                             H.handler(CTX)
                         ).then(async (result?) => {
                             try {
-                                await this.ok(result);
+                                await this.ok(result, MSG.ref);
                             } catch {
                                 CLOSE();
                             }
                         }).catch(async (err) => {
                             try {
-                                await this.error(err);
+                                await this.error(err, MSG.ref);
                             } catch {
                                 CLOSE();
                             }
                         });
                     } catch (e) {
-                        this.error(e)
+                        this.error(e, MSG.ref)
                             .catch(() => CLOSE());
 
                         return;
@@ -255,10 +255,11 @@ export class SimpleWebSocket extends EventEmitter {
     /**
      * Sends an OK message.
      *
-     * @param {Nilable<TData>} [data] The optional data to send. 
+     * @param {Nilable<TData>} [data] The optional data to send.
+     * @param {Nilable<TRef>} [ref] Reference data.
      */
-    public ok<TData extends any = any>(data?: Nilable<TData>) {
-        return this.send('ok', data);
+    public ok<TData extends any = any, TRef extends any = any>(data?: Nilable<TData>, ref?: Nilable<TRef>) {
+        return this.send('ok', data, ref);
     }
 
     /**
@@ -299,12 +300,13 @@ export class SimpleWebSocket extends EventEmitter {
      * @param {string} type The type of the data.
      * @param {Nilable<TData>} [data] The optional data to send. 
      */
-    public send<TData extends any = any>(type: string, data?: Nilable<TData>): Promise<void> {
+    public send<TData extends any = any, TRef extends any = any>(type: string, data?: Nilable<TData>, ref?: Nilable<TRef>): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             try {
                 const MSG: WebSocketMessage<TData> = {
                     type: String(type),
                     data,
+                    ref,
                 };
 
                 this.options.socket.send(JSON.stringify(MSG), (err) => {
