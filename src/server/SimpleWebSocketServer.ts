@@ -87,6 +87,13 @@ export class SimpleWebSocketServer extends EventEmitter {
     }
 
     /**
+     * Gets the list of clients.
+     */
+    public get clients(): Nilable<SimpleWebSocket[]> {
+        return this._clients;
+    }
+
+    /**
      * Closes the connection.
      */
     public close() {
@@ -281,6 +288,21 @@ export class SimpleWebSocketServer extends EventEmitter {
                     (this._onMessageHandlers as OnMessageHandlerItem[]).filter(h => h !== NEW_ITEM);
             },
         };
+    }
+
+    /**
+     * Sends data to all remote clients.
+     *
+     * @param {string} type The type of the data.
+     * @param {Nilable<TData>} [data] The optional data to send.
+     * @param {Nilable<TRef>} [ref] Reference data.
+     */
+    public async send<TData extends any = any, TRef extends any = any>(type: string, data?: Nilable<TData>, ref?: Nilable<TRef>): Promise<void> {
+        await Promise.all(
+            this.clients?.map(c => {
+                return c.send.apply(c, [type, data, ref]);
+            }) || []
+        );
     }
 
     /**

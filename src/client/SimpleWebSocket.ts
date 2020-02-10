@@ -144,7 +144,8 @@ export class SimpleWebSocket extends EventEmitter {
     /**
      * Sends an error message.
      *
-     * @param {any} err The error information. 
+     * @param {any} err The error information.
+     * @param {Nilable<TRef>} [ref] Reference data.
      */
     public error<TRef extends any = any>(err: any, ref?: Nilable<TRef>) {
         let errData: any = err;
@@ -298,7 +299,8 @@ export class SimpleWebSocket extends EventEmitter {
      * Sends data to the remote server.
      *
      * @param {string} type The type of the data.
-     * @param {Nilable<TData>} [data] The optional data to send. 
+     * @param {Nilable<TData>} [data] The optional data to send.
+     * @param {Nilable<TRef>} [ref] Reference data.
      */
     public send<TData extends any = any, TRef extends any = any>(type: string, data?: Nilable<TData>, ref?: Nilable<TRef>): Promise<void> {
         return new Promise<void>((resolve, reject) => {
