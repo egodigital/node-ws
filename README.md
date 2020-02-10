@@ -84,7 +84,7 @@ client.on('close', () => {
 
 // SimpleWebSocketServer
 server.on('connection', (client, server) => {
-    // handle message from remote client
+    // new connection with 'client'
 });
 server.on('message', (msg, client, server) => {
     // handle message from remote client
