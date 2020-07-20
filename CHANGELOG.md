@@ -1,5 +1,9 @@
 # Change Log (@egodigital/ws)
 
+## 0.5.0
+
+* npm update
+
 ## 0.4.0
 
 * added `send()` method to [SimpleWebSocketServer](https://egodigital.github.io/ws/modules/_server_simplewebsocketserver_.html) interface
